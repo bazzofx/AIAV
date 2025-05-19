@@ -31,9 +31,9 @@ $processArray = @()   # Contain the whitelist process information to be exported
          Try{
             $whiteList = Import-Csv $whitelistPath
             $secureStringList = $whiteList.secureString
-            Write-Host "[INFO] - Loading New list" -ForegroundColor Gray 
+            #Write-Host "[INFO] - Whitelist Refreshed" -ForegroundColor Gray # ------ debug
             }
-        Catch{Write-Host "ERROR - File could not be found!" -ForegroundColor Red}
+        Catch{}
 
 
 
@@ -81,7 +81,7 @@ Write-Host "Starting to Monitoring Computer" -ForegroundColor Cyan
 #While ($monitorTime -ge 0){
 While ($true){
 $processList = Get-Process |Select-Object Name,Company,Path,Description,Product,Id,secureString
-Write-Host "[INFO] - Loading New list" -ForegroundColor Gray
+#Write-Host "[INFO] - Whitelist Refreshed" -ForegroundColor Gray #--- debug
 $whiteList = Import-Csv $whitelistPath
 $secureStringList = $whiteList.secureString
    
@@ -130,8 +130,8 @@ $secureStringList = $whiteList.secureString
     }#cls forEach
 
 
-$monitorTime--
-Write-Host "Monitoring Computer... $monitorTime / $initialTime" -ForegroundColor Gray
+$monitorTime++
+Write-Host "[$monitorTime] Monitoring Computer ..." -ForegroundColor Gray
 }#cls While
 # if(($proc.Name -and $proc.Company) -notin 
 }
