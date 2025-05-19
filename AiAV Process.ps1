@@ -1,5 +1,5 @@
 ﻿# Path to the whitelist file
-$wd = "C:\Users\joker\OneDrive\Documents\Github\AI AV Project"
+$wd = $PSScriptRoot
 $whitelistPath = "$wd\whitelist.csv"
 $logPath = "$wd\process_log.txt"
 
@@ -7,14 +7,14 @@ $logPath = "$wd\process_log.txt"
 function AddtoLog($msg){Add-Content -Path $logPath -Value $msg
 }
 function suspend-process($id){
-Start-Process "C:\apps\pssuspend64.exe" -ArgumentList "$id -accepteula"
+Start-Process "$wd\pssuspend64.exe" -ArgumentList "$id -accepteula"
 }
 function resume-process($id){
-Start-Process "C:\apps\pssuspend64.exe" -ArgumentList "-r $id -accepteula"
+Start-Process "$wd\pssuspend64.exe" -ArgumentList "-r $id -accepteula"
 }
 #Sub Functions ----------------------- END
 
-function learn($seconds) {
+function buildBaseLine($seconds) {
 if($seconds -eq $null -or $seconds -eq ""){Write-Host "Building System baseline for 180 seconds"; $seconds = 180}
 $totalSeconds = $seconds
 $whiteListCheckArray = @() # Keep track of the secureString to be whitelisted
@@ -23,13 +23,17 @@ $processArray = @()   # Contain the whitelist process information to be exported
         $processList = Get-Process |Select-Object Name,Company,Path,Description,Product
 
         foreach ($x in $processList) {
-            $secureString = "$($x.Name) - $($x.Company) - $($x.Description) - $($x.Product) - $($x.Path)"
+            Try{
+                $fileHash = (Get-FileHash -Path $x.path -Algorithm SHA256 -ErrorAction Stop).Hash}
+            Catch{}
+            $secureString = "$($x.Name) - $($x.Company) - $($x.Description) - $($x.Product) - $($x.Path) - $($fileHash)"
             $psCustomObject = [PSCustomObject]@{
                 Name         = $x.Name
                 Company      = $x.Company
                 Path         = $x.Path
                 Description  = $x.Description
                 Product      = $x.Product
+                Sha256       = $fileHash
                 SecureString = $secureString
             }
             if ($secureString -notin $whiteListCheckArray -and $secureString -notin $whitelistPath) {
@@ -37,7 +41,7 @@ $processArray = @()   # Contain the whitelist process information to be exported
                 $whiteListCheckArray += $secureString
                 $logEntry = "{0} - {1} - {2}" -f (Get-Date), $proc.Name, $proc.Company
                 AddtoLog -msg $logEntry
-                Write-host "[Added] $($x.Name) - $($x.Path)" -ForegroundColor Green
+                Write-host "[Added] $($x.Name) - $($x.Path):$($fileHash)" -ForegroundColor Green
             }
         } #cls forEac
 
@@ -59,15 +63,20 @@ $monitorTime = 10
 $initialTime = $monitorTime
 
 Write-Host "Starting to Monitoring Computer" -ForegroundColor Cyan
-While ($monitorTime -ge 0){
-$processList = Get-Process |Select-Object Name,Company,Path,Description,Product,Id
+#While ($monitorTime -ge 0){
+While ($true){
+$processList = Get-Process |Select-Object Name,Company,Path,Description,Product,Id,secureString
 $whiteList = Import-Csv $whitelistPath
 $secureStringList = $whiteList.secureString
    
     foreach ($proc in $processList) {
     $Id = $proc.Id
-    $secureString = "$($proc.Name) - $($proc.Company) - $($proc.Description) - $($proc.Product) - $($proc.Path)"
+     Try{
+        $fileHash = (Get-FileHash -Path $x.path -Algorithm SHA256 -ErrorAction Stop).Hash}
+      Catch{}
+    $secureString = "$($proc.Name) - $($proc.Company) - $($proc.Description) - $($proc.Product) - $($proc.Path) - $($fileHash)"
     #Write-Host $secureString -ForegroundColor Gray
+        Write-Host $secureString -ForegroundColor Cyan
 
         if($secureString -notin $secureStringList){
         Write-Host "⚠ Suspicious Process Detected!!!" -ForegroundColor Yellow
@@ -88,9 +97,11 @@ $secureStringList = $whiteList.secureString
                     Path         = $proc.Path
                     Description  = $proc.Description
                     Product      = $proc.Product
+                    Sha256       = $fileHash
                     SecureString = $secureString
                 }
-            $psCustomObject | Export-Csv -Path $whitelistPath -Append -NoTypeInformation -Encoding UTF8
+
+            $psCustomObject | Export-Csv -Path $whitelistPath -Append -NoTypeInformation -Encoding UTF8 -Force
             }else {
             Write-Host "[QUARANTINE] - $($proc.Name) - Not allowed to run - Suspended" -ForegroundColor Yellow
             $logEntry = "{0} - [TERMINATED] {1} - {2}" -f (Get-Date), $proc.Name, $proc.Company
@@ -153,10 +164,11 @@ function startMonitorUI {
                         Path         = $proc.Path
                         Description  = $proc.Description
                         Product      = $proc.Product
+                        Sha256       = $fileHash
                         SecureString = $secureString
                     }
 
-                    $psCustomObject | Export-Csv -Path $whitelistPath -Append -NoTypeInformation -Encoding UTF8
+                    $psCustomObject | Export-Csv -Path $whitelistPath -Append -NoTypeInformation -Encoding UTF8 -Force
                 } else {
                     Write-Host "❌ $($proc.Name) Process Terminated!" -ForegroundColor Red
                     $logEntry = "{0} - [TERMINATED] {1} - {2}" -f (Get-Date), $proc.Name, $proc.Company
