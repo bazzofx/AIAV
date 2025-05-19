@@ -2,10 +2,20 @@
 $wd = "C:\Users\joker\OneDrive\Documents\Github\AI AV Project"
 $whitelistPath = "$wd\whitelist.csv"
 $logPath = "$wd\process_log.txt"
-function AddtoLog($msg){
-Add-Content -Path $logPath -Value $msg
+
+#Sub Functions ----------------------- Start
+function AddtoLog($msg){Add-Content -Path $logPath -Value $msg
 }
-function buildBaseLine($seconds) {
+function suspend-process($id){
+Start-Process "C:\apps\pssuspend64.exe" -ArgumentList "$id -accepteula"
+}
+function resume-process($id){
+Start-Process "C:\apps\pssuspend64.exe" -ArgumentList "-r $id -accepteula"
+}
+#Sub Functions ----------------------- END
+
+function learn($seconds) {
+if($seconds -eq $null -or $seconds -eq ""){Write-Host "Building System baseline for 180 seconds"; $seconds = 180}
 $totalSeconds = $seconds
 $whiteListCheckArray = @() # Keep track of the secureString to be whitelisted
 $processArray = @()   # Contain the whitelist process information to be exported
@@ -39,13 +49,8 @@ $processArray = @()   # Contain the whitelist process information to be exported
     $processArray | Export-Csv -Path $whitelistPath -Append -NoTypeInformation -Encoding UTF8
 
 }
-#buildBaseLine -seconds 60
-function suspend-process($id){
-Start-Process "C:\apps\pssuspend64.exe" -ArgumentList "$id -accepteula"
-}
-function resume-process($id){
-Start-Process "C:\apps\pssuspend64.exe" -ArgumentList "-r $id -accepteula"
-}
+#buildBaseLine -seconds 60 
+
 function startMonitor{
 #Import WhiteList
 
@@ -166,4 +171,4 @@ function startMonitorUI {
         Start-Sleep -Seconds 5
     }
 }
-startMonitor
+#startMonitor
